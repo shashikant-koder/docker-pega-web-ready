@@ -1,0 +1,15 @@
+FROM busybox AS builder
+
+# Expand prweb to target directory
+COPY prweb.war /prweb.war
+RUN mkdir prweb
+RUN unzip -q -o prweb.war -d /prweb
+
+
+FROM pega-tomcat
+
+# Import prweb to tomcat webapps directory
+COPY --from=builder /prweb ${CATALINA_HOME}/webapps/prweb
+
+# Make a jdbc driver available to tomcat applications
+COPY postgresql-42.2.5.jar ${CATALINA_HOME}/lib/

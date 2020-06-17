@@ -11,39 +11,52 @@ LABEL vendor="Pegasystems Inc." \
 
 ENV PEGA_DOCKER_VERSION=${VERSION:-CUSTOM_BUILD}
 
+RUN groupadd -g 1001 appuser && \
+    useradd -r -u 1001 -g appuser appuser
+
+
+
 # Create directory for storing heapdump
 RUN mkdir -p /heapdumps  && \
-    chmod 770 /heapdumps
+    chmod 770 /heapdumps && \
+    chown -R appuser /heapdumps
 
 # Create common directory for mounting configuration and libraries
 RUN mkdir -p /opt/pega && \
-    chgrp -R 0 /opt/pega && \
-    chmod -R g+rw /opt/pega
+    chgrp -R 1001 /opt/pega && \
+    chmod -R g+rw /opt/pega && \
+    chown -R appuser /opt/pega
 
 # Create directory for filesystem repository
 RUN  mkdir -p /opt/pega/filerepo  && \
-     chgrp -R 0 /opt/pega/filerepo && \
-     chmod -R g+rw /opt/pega/filerepo
+     chgrp -R 1001 /opt/pega/filerepo && \
+     chmod -R g+rw /opt/pega/filerepo && \
+     chown -R appuser /opt/pega/filerepo
 
 # Create directory for mounting configuration files
 RUN  mkdir -p /opt/pega/config  && \
-     chgrp -R 0 /opt/pega/config && \
-     chmod -R g+rw /opt/pega/config
+     chgrp -R 1001 /opt/pega/config && \
+     chmod -R g+rw /opt/pega/config && \
+     chown -R appuser /opt/pega/config
 
 # Create directory for mounting libraries
 RUN  mkdir -p /opt/pega/lib  && \
-     chgrp -R 0 /opt/pega/lib && \
-     chmod -R g+rw /opt/pega/lib
+     chgrp -R 1001 /opt/pega/lib && \
+     chmod -R g+rw /opt/pega/lib && \
+     chown -R appuser /opt/pega/lib
 
 # Create directory for mounting secrets
 RUN  mkdir -p /opt/pega/secrets  && \
-     chgrp -R 0 /opt/pega && \
-     chmod -R g+rw /opt/pega/secrets
+     chgrp -R 1001 /opt/pega && \
+     chmod -R g+rw /opt/pega/secrets && \
+     chown -R appuser /opt/pega/secrets
 
 # Create directory for extra stream volume
 RUN mkdir -p /opt/pega/streamvol && \
-    chgrp -R 0 /opt/pega/streamvol && \
-    chmod -R g+rw /opt/pega/streamvol
+    chgrp -R 1001 /opt/pega/streamvol && \
+    chmod -R g+rw /opt/pega/streamvol && \
+    chown -R appuser /opt/pega/streamvol
+
 
 # Set up an empty JDBC URL which will, if set to a non-empty value, be used in preference
 # to the "constructed" JDBC URL
@@ -99,7 +112,8 @@ ENV PEGA_SEARCH_URL=
 #Set up volume for persistent Kafka data storage
 RUN  mkdir -p /opt/pega/kafkadata  && \
 	 chgrp -R 0 /opt/pega/kafkadata && \
-	 chmod -R g+rw /opt/pega/kafkadata
+	 chmod -R g+rw /opt/pega/kafkadata && \
+	 chown -R appuser /opt/pega/kafkadata
 
 # Remove existing webapps
 RUN rm -rf ${CATALINA_HOME}/webapps/*
@@ -119,9 +133,17 @@ RUN chmod -R g+rw ${CATALINA_HOME}/logs  && \
     chmod -R g+rw ${CATALINA_HOME}/work  && \
     chmod -R g+rw ${CATALINA_HOME}/conf  && \
     chmod -R g+x /scripts && \
+    chown -R appuser /scripts && \
     chmod g+r ${CATALINA_HOME}/conf/web.xml && \
+    chown -R appuser ${CATALINA_HOME}  && \
     mkdir /search_index && \
-    chmod -R g+w /search_index
+    chmod -R g+w /search_index && \
+    chown -R appuser /search_index
+
+
+USER appuser
+
+RUN chmod 700 /scripts/docker-entrypoint.sh
 
 ENTRYPOINT ["/scripts/docker-entrypoint.sh"]
 CMD ["run"]
@@ -130,12 +152,3 @@ CMD ["run"]
 
 # HTTP is 8080, JMX is 9001, Hazelcast is 5701-5710, Ignite is 47100, REST for Kafka is 7003
 EXPOSE 8080 9001 5701-5710 47100 7003
-
-# *****Target for test environment*****
-
-FROM release as qualitytest
-RUN mkdir /tests
-RUN chmod 777 /tests
-COPY /tests /tests
-
-FROM release
